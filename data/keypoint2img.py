@@ -5,6 +5,7 @@ import json
 import glob
 from scipy.optimize import curve_fit
 import warnings
+import cv2
 
 def func(x, a, b, c):    
     return a * x**2 + b * x + c
@@ -59,7 +60,8 @@ def interpPoints(x, y):
         if x[0] > x[-1]:
             x = list(reversed(x))
             y = list(reversed(y))
-        curve_x = np.linspace(x[0], x[-1], (x[-1]-x[0]))
+        # curve_x = np.linspace(x[0], x[-1], (x[-1]-x[0]))
+        curve_x = np.linspace(int(x[0]), int(x[-1]), int(x[-1]-x[0]))
         if len(x) < 3:
             curve_y = linear(curve_x, *popt)
         else:
@@ -76,8 +78,14 @@ def read_keypoints(json_input, size, random_drop_prob=0, remove_face_labels=Fals
     for keypoint_dict in keypoint_dicts:    
         pose_pts = np.array(keypoint_dict["pose_keypoints_2d"]).reshape(25, 3)
         face_pts = np.array(keypoint_dict["face_keypoints_2d"]).reshape(70, 3)
-        hand_pts_l = np.array(keypoint_dict["hand_left_keypoints_2d"]).reshape(21, 3)
-        hand_pts_r = np.array(keypoint_dict["hand_right_keypoints_2d"]).reshape(21, 3)            
+        #hand_pts_l = np.array(keypoint_dict["hand_left_keypoints_2d"]).reshape(21, 3)
+        #hand_pts_r = np.array(keypoint_dict["hand_right_keypoints_2d"]).reshape(21, 3)
+        if keypoint_dict["hand_left_keypoints_2d"] ==[]:
+            hand_pts_l = np.zeros((21, 3), dtype=float)
+            hand_pts_r = np.zeros((21, 3), dtype=float)
+        else:
+            hand_pts_l = np.array(keypoint_dict["hand_left_keypoints_2d"]).reshape(21, 3)
+            hand_pts_r = np.array(keypoint_dict["hand_right_keypoints_2d"]).reshape(21, 3)
         pts = [extract_valid_keypoints(pts, edge_lists) for pts in [pose_pts, face_pts, hand_pts_l, hand_pts_r]]           
         pose_img += connect_keypoints(pts, edge_lists, size, random_drop_prob, remove_face_labels, basic_point_only)
     return pose_img
@@ -132,7 +140,7 @@ def connect_keypoints(pts, edge_lists, size, random_drop_prob, remove_face_label
                         x, y = hand_pts[sub_edge, 0], hand_pts[sub_edge, 1]                    
                         if 0 not in x:
                             line_x, line_y = interpPoints(x, y)                                        
-                            drawEdge(output_edges, line_x, line_y, bw=1, color=hand_color_list[i], draw_end_points=True)
+                            drawEdge(output_edges, line_x, line_y, bw=3, color=hand_color_list[i], draw_end_points=True)
 
         ### face
         edge_len = 2
@@ -144,7 +152,13 @@ def connect_keypoints(pts, edge_lists, size, random_drop_prob, remove_face_label
                         x, y = face_pts[sub_edge, 0], face_pts[sub_edge, 1]
                         if 0 not in x:
                             curve_x, curve_y = interpPoints(x, y)
-                            drawEdge(output_edges, curve_x, curve_y, draw_end_points=True)
+                            drawEdge(output_edges, curve_x, curve_y, bw=2, draw_end_points=False)
+
+    ###wrist points
+    #cv2.circle(output_edges, (int(pose_pts[7, 0]), int(pose_pts[7, 1])), 10, (0, 255, 0), -1)
+    #cv2.circle(output_edges, (int(pose_pts[4, 0]), int(pose_pts[4, 1])), 10, (255, 0, 0), -1)
+    cv2.circle(output_edges, (int(hand_pts_l[9, 0]), int(hand_pts_l[9, 1])), 8, (0, 255, 0), -1)
+    cv2.circle(output_edges, (int(hand_pts_r[9, 0]), int(hand_pts_r[9, 1])), 8, (255, 0, 0), -1)
 
     return output_edges
 
@@ -152,16 +166,16 @@ def define_edge_lists(basic_point_only):
     ### pose        
     pose_edge_list = []
     pose_color_list = []
-    if not basic_point_only:
-        pose_edge_list += [[17, 15], [15,  0], [ 0, 16], [16, 18]]       # head
-        pose_color_list += [[153,  0,153], [153,  0,102], [102,  0,153], [ 51,  0,153]]
+    #if not basic_point_only:
+        #pose_edge_list += [[17, 15], [15,  0], [ 0, 16], [16, 18]]       # head
+        #pose_color_list += [[153,  0,153], [153,  0,102], [102,  0,153], [ 51,  0,153]]
 
     pose_edge_list += [        
         [ 0,  1], [ 1,  8],                                         # body
         [ 1,  2], [ 2,  3], [ 3,  4],                               # right arm
         [ 1,  5], [ 5,  6], [ 6,  7],                               # left arm
-        [ 8,  9], [ 9, 10], [10, 11], [11, 24], [11, 22], [22, 23], # right leg
-        [ 8, 12], [12, 13], [13, 14], [14, 21], [14, 19], [19, 20]  # left leg
+        [ 8,  9], #[ 9, 10], [10, 11], [11, 24], [11, 22], [22, 23], # right leg
+        [ 8, 12]#, [12, 13], [13, 14], [14, 21], [14, 19], [19, 20]  # left leg
     ]
     pose_color_list += [
         [153,  0, 51], [153,  0,  0],
@@ -185,12 +199,13 @@ def define_edge_lists(basic_point_only):
 
     ### face        
     face_list = [
-                 #[range(0, 17)], # face
+                 [range(0, 17)], # face
                  [range(17, 22)], # left eyebrow
                  [range(22, 27)], # right eyebrow
                  [range(27, 31), range(31, 36)], # nose
                  [[36,37,38,39], [39,40,41,36]], # left eye
                  [[42,43,44,45], [45,46,47,42]], # right eye
-                 [range(48, 55), [54,55,56,57,58,59,48]], # mouth
+                 [range(48, 55), [54,55,56,57,58,59,48]], # mouth outer
+                 [range(60, 65), [64, 65, 66, 67, 60]],  # mouth inner
                 ]
     return pose_edge_list, pose_color_list, hand_edge_list, hand_color_list, face_list

@@ -182,9 +182,9 @@ class BaseModel(torch.nn.Module):
 
     def grid_sample(self, input1, input2):
         if self.opt.fp16: # not sure if it's necessary
-            return torch.nn.functional.grid_sample(input1.float(), input2.float(), mode='bilinear', padding_mode='border').half()
+            return torch.nn.functional.grid_sample(input1.float(), input2.float(), mode='bilinear', padding_mode='border',align_corners=True).half()
         else:
-            return torch.nn.functional.grid_sample(input1, input2, mode='bilinear', padding_mode='border')
+            return torch.nn.functional.grid_sample(input1, input2, mode='bilinear', padding_mode='border',align_corners=True)
 
     def resample(self, image, flow):        
         b, c, h, w = image.size()        
