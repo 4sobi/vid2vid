@@ -1,3 +1,7 @@
+Pytorch 2.0.1 과 python 3.9에서 작동할 수 있도록 일부 수정 
+
+Flownet Pre-trained Model은 소스 내의 스크립트를 이용하는 대신 'https://github.com/NVIDIA/flownet2-pytorch'에서 다운 받아야 정상 동작 함
+
 <img src='imgs/teaser.gif' align="right" width=360>
 
 <br><br><br><br>
